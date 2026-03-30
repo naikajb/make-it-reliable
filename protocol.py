@@ -7,6 +7,7 @@ import random
 #   Sequence Number: 0 or 1
 #   Message Type: REQ, ACK, DATA, or ERR
 #   Payload Length: in bytes
+#   expected segment size: as an int 
 
 MSG_REQUEST = 1
 MSG_ACK     = 2
@@ -20,7 +21,7 @@ MSG_TYPES = {
     MSG_DATA    :   "DATA"
 }
 
-HEADER_FORMAT = "!IBBI"
+HEADER_FORMAT = "!IBBII"
 HEADER_SIZE = struct.calcsize(HEADER_FORMAT)
 
 def get_connection_id() -> int:
@@ -32,7 +33,7 @@ def get_message_type(msg_type:int):
     return MSG_TYPES.get(msg_type, f"UNKNOWN(Ox{msg_type:02x})")
     
 
-def create_packet(connection_id:int, seq_num:int, msg_type:int, payload:bytes)->bytes:
+def create_packet(connection_id:int, seq_num:int, msg_type:int, payload:bytes, segment_size: int)->bytes:
     """Serialize the packet: header + payload
 
     Args:
@@ -40,6 +41,7 @@ def create_packet(connection_id:int, seq_num:int, msg_type:int, payload:bytes)->
         seq_num       : alternating 0/1 for stop-and-wait
         msg_type      : MSG_REQUEST | MSG_DATA | MSG_ACK | MSG_ERROR
         payload       : bytes (either the filename or the chunks of data)
+        segment_size  : int 
 
     Returns: 
         bytes:  UDP packet (header + data)
@@ -50,7 +52,8 @@ def create_packet(connection_id:int, seq_num:int, msg_type:int, payload:bytes)->
         connection_id,
         seq_num,
         msg_type,
-        len(payload)
+        len(payload),
+        segment_size
     )
 
     return header + payload
@@ -61,7 +64,7 @@ def unpack_packet(data:bytes):
     if len(data) < HEADER_SIZE:
         print(f"Packet is smaller ({len(data)}bytes) than defined header size ({HEADER_SIZE})")
     
-    connection_id, seq_num, msg_type, payload_length = struct.unpack(HEADER_FORMAT, data[:HEADER_SIZE])
+    connection_id, seq_num, msg_type, payload_length, segment_size = struct.unpack(HEADER_FORMAT, data[:HEADER_SIZE])
     
     payload = data[HEADER_SIZE : HEADER_SIZE + payload_length]
 
@@ -70,5 +73,6 @@ def unpack_packet(data:bytes):
         'seq_num':          seq_num,
         'msg_type':         msg_type,
         'payload_length':   payload_length,
-        'payload':          payload 
+        'payload':          payload,
+        'segment_size':     segment_size
     }

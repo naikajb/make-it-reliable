@@ -1,7 +1,8 @@
 import socket
-from protocol import (unpack_packet, create_packet, MSG_ACK, MSG_ERROR, MSG_REQUEST, get_message_type)
+from protocol import (unpack_packet, create_packet, MSG_ACK, MSG_ERROR, MSG_REQUEST, MSG_DATA, get_message_type)
+from transfer import Transfer
 
-def handle_request(sock, client_addr,  connection_id, parsed ):
+def handle_request(sock, client_addr,  connection_id, parsed, active_transfers ):
     """
     Process an incoming REQUEST packet.
 
@@ -19,7 +20,7 @@ def handle_request(sock, client_addr,  connection_id, parsed ):
             raise ValueError
         print(f"[SERVER]    Looking for file  \"{filename}\"")
     except UnicodeDecodeError:
-        print(f"[SERVER]    Malformed REQUEST payload from {client_addr}, cannot decode filename")
+        print(f"[SERVER]    Malformed REQUEST from {client_addr}, cannot decode filename")
         return
     
     
@@ -33,15 +34,32 @@ def handle_request(sock, client_addr,  connection_id, parsed ):
 
     
     # set up to send file chunks
+    transfer_state = Transfer(
+        connection_id,
+        client_addr,
+        filename,
+        file_content, 
+        parsed['segment_size']
+    )
+
+    #add it to the list of transfers ongoing in server
+    active_transfers[connection_id] = transfer_state
+
+    # start sending data
+    send_data(sock,transfer_state)
 
 
-
-    
-
-    
-
-    
-
+def send_data(sock, transfer_state):
+    # you send the current chunk of data and then in
+    packet = create_packet(
+        connection_id = transfer_state.connection_id,
+        seq_num = transfer_state.seq_num,
+        msg_type = MSG_DATA,
+        payload = transfer_state.get_current_chunk(),
+        segment_size= transfer_state.segment_size
+    )
+    sock.sendto(packet, transfer_state.client_addr)
+    print(f"[server] DATA sent  seq={transfer_state.seq_num}. Sent {transfer_state.current_chunk}/{transfer_state.total_chunks}")
 
 
 def start_server(args):
@@ -54,6 +72,7 @@ def start_server(args):
     print(f"[SERVER]    listening on {host}:{port}")
     print(f"[SERVER]    waiting for requests...\n")
 
+    active_transfers = {}
     try: 
         while True:
             # receive the data
@@ -82,7 +101,8 @@ def start_server(args):
                     sock,
                     client_addr,
                     connection_id,
-                    parsed
+                    parsed,
+                    active_transfers
                 )
             else:
                 print(f"[SERVER] Received {msg_type} type message. Not implemented yet.")
