@@ -1,5 +1,5 @@
 # to run server: python main.py serve --port 5005
-# to run client: python main.py get --host 127.0.0.1 --port 5005 --filename report.pdf --segment-size 512 --timeout 4.0
+# to run client: python main.py get --host 127.0.0.1 --port 5005 --filename COMP445_TA4_W26.pdf --segment-size 512 --timeout 4.0
 
 import argparse
 from client import start_client
