@@ -1,6 +1,7 @@
 # to run server: python main.py serve --port 5005
 # to run client: python main.py get --host 127.0.0.1 --port 5005 --filename COMP445_TA4_W26.pdf --segment-size 512 --timeout 4.0
 
+# delete any of the create files run: find . -regex  './received_files/File_.*pdf' -delete
 import argparse
 from client import start_client
 from server import start_server

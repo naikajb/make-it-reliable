@@ -1,6 +1,7 @@
-import sys
 import os
+import sys
 import socket
+import datetime
 from protocol import (get_connection_id, create_packet, unpack_packet,  MSG_DATA, MSG_REQUEST, MSG_ERROR, MSG_ACK)
 
 
@@ -52,14 +53,19 @@ def receive_file (sock, connection_id, seq_num, server_addr, output_path, timeou
     while True: 
         try:
             data , addr = sock.recvfrom(65535)
-            received_packet = unpack_packet(data)
         except socket.timeout:
             print(f"[CLIENT]    Timed out waiting for DATA seq={expected_seq_num}")
             return False
+        
+        try:
+            received_packet = unpack_packet(data)
+        except ValueError as e:
+            print(f"[CLIENT]    Malformed packet received, discarding: {e}")
+            continue
 
 
         # IF  connection_id !Valid --> drop packet
-        if received_packet['connect_id'] != connection_id:
+        if received_packet['connection_id'] != connection_id:
             print(f'[CLIENT]     Did not recognize connection_id={received_packet['connect_id']}. Dropping packet.')
             continue
 
@@ -72,19 +78,20 @@ def receive_file (sock, connection_id, seq_num, server_addr, output_path, timeou
         if received_packet['msg_type'] != MSG_DATA:
             continue
 
-        seq = received_packet["seq_num"]
+        seq_num= received_packet["seq_num"]
         # IF seq_num != expected_sequence_num
         # TODO: drop? or resend an ACK? 
 
         #what you received is valid --> send ACK
         file_chunks.append(received_packet["payload"])
-        ack_packet = create_packet(connection_id,  MSG_ACK, b"", segment_size )
+        print(f"[CLIENT]    DATA received  seq={seq_num}  chunk={len(file_chunks)}  {len(received_packet['payload'])}B")
+        ack_packet = create_packet(connection_id, seq_num, MSG_ACK, b" ", segment_size )
         sock.sendto(ack_packet, server_addr)
 
         expected_seq_num = 1 - expected_seq_num # alternate the expected sequence number
 
         if len(received_packet["payload"]) < segment_size:
-            print(f"[CLIENT]    Final chunk received — transfer complete")
+            print(f"[CLIENT]    Final chunk received. Transfer complete")
             break
     
     write_to_file(output_path, file_chunks)
@@ -92,11 +99,15 @@ def receive_file (sock, connection_id, seq_num, server_addr, output_path, timeou
 
 def write_to_file(output_path, file_chunks):
     """ Write the received data chunks to output path"""
+    try: 
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    except OSError as e:
+        print(f"[CLIENT] Error writing file to path={output_path}. {e}")
     file_data = b"".join(file_chunks)
     with open(output_path, "wb") as f:
-        f.write(file_chunks)
+        f.write(file_data)
 
-    print(f"[CLIENT]    File saved → {output_path}  ({len(file_data)}B)")
+    print(f"[CLIENT]    File saved \u21D2 {output_path}  ({len(file_data)}B)")
     
 
 def start_client(args):
@@ -122,13 +133,13 @@ def start_client(args):
 
 
         # with first received packe we can set up to receive the rest and send ACK
-        seq = first_packet['seq_num']
-        output_path = f"./received_files/File_{connection_id}"
+        seq_num= first_packet['seq_num']
+        output_path = f"./received_files/File_{connection_id}_{datetime.datetime.today().strftime("%d-%b-%H:%M")}.pdf"
 
         receive_file(
             sock            = sock, 
             connection_id   = connection_id, 
-            seq_num         = seq, 
+            seq_num         = seq_num, 
             server_addr     = server_addr, 
             output_path     = output_path, 
             timeout         = args.timeout,

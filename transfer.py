@@ -36,6 +36,10 @@ class Transfer:
         """ Return the data of the chunk we are currently at"""
         return self.chunks[self.current_chunk]
     
+    def next(self):
+        """Increments the 'current_chunk' and 'seq_num' vars """
+        self.current_chunk += 1
+        self.seq_num = 1 - self.seq_num
     
 
 
