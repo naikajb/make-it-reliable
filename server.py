@@ -121,6 +121,7 @@ def start_server(args):
     
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((host, port))
+    sock.settimeout(3.0)
 
     print(f"[SERVER]    Listening on {host}:{port}")
     print(f"[SERVER]    Waiting for requests...\n")
