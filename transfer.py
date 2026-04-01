@@ -18,6 +18,7 @@ class Transfer:
         self.current_chunk = 0  #   goes from 0 to len(file_data)-1
         self.seq_num = 0 #   when we are transfering data, the first sequence number will always be zero. 
         self.transfer_number = transfer_number
+        self.retransmissions = 0
 
         self.chunks = self.split_data(file_data)
         self.total_chunks = len(self.chunks)
