@@ -7,7 +7,7 @@
 # everytime the server is responding to a request with data, a Transfer object needs to be created to track the progress
 class Transfer:
 
-    def __init__(self, connection_id, client_addr, filename, file_data, segment_size):
+    def __init__(self, connection_id, client_addr, filename, file_data, segment_size, transfer_number):
         self.connection_id = connection_id
         self.client_addr = client_addr
         self.filename = filename
@@ -17,6 +17,7 @@ class Transfer:
         self.is_complete = False 
         self.current_chunk = 0  #   goes from 0 to len(file_data)-1
         self.seq_num = 0 #   when we are transfering data, the first sequence number will always be zero. 
+        self.transfer_number = transfer_number
 
         self.chunks = self.split_data(file_data)
         self.total_chunks = len(self.chunks)

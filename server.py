@@ -1,9 +1,9 @@
 import socket
-from protocol import (unpack_packet, create_packet, MSG_ACK, MSG_ERROR, MSG_REQUEST, MSG_DATA, get_message_type)
+from protocol import (unpack_packet, create_packet, MSG_ACK, MSG_ERROR, MSG_REQUEST, MSG_DATA)
 from transfer import Transfer
 
 # the server transmits one data segment at a time 
-# and waits for an explicit acknowledgment before proceeding.
+# and waits for an ACK before proceeding.
 
 
 def handle_request(sock, client_addr,  connection_id, parsed, active_transfers ):
@@ -33,7 +33,16 @@ def handle_request(sock, client_addr,  connection_id, parsed, active_transfers )
             file_content = f.read()
         print(f'[SERVER]    {filename} was found and read. Preparing to transfer file....')
     except FileNotFoundError as e:
-        print(f"[server]    failed to read '{filename}': {e}")
+        # send error if not found
+        error_packet = create_packet(
+            parsed['connection_id'],
+            seq_num=0,
+            msg_type=MSG_ERROR,
+            payload= "File not Found: {filename}".encode("utf-8"),
+            segment_size=0
+        )
+        sock.sendto(error_packet, client_addr)
+        return
     
     # set up to send file chunks
     transfer_state = Transfer(
@@ -41,11 +50,13 @@ def handle_request(sock, client_addr,  connection_id, parsed, active_transfers )
         client_addr,
         filename,
         file_content, 
-        parsed['segment_size']
+        parsed['segment_size'],
+        len(active_transfers) + 1
     )
 
     #add it to the list of transfers ongoing in server
     active_transfers[connection_id] = transfer_state
+    print(f"[SERVER][TRANSFER #{transfer_state.transfer_number}] Added request to list of active transfers.")
 
     # start sending data
     send_data(sock,transfer_state)
@@ -72,20 +83,20 @@ def handle_ack(sock, parsed, active_transfers):
     
     # check the sequence number
     if seq_num != transfer_state.seq_num:
-        print(f"[SERVER]    Received duplicated ACK with seq_num={seq_num}. Retransmitting packet.")
+        print(f"[SERVER][Transfer #{transfer_state.transfer_number}]    ACK seq={seq_num} does not match expected seq={transfer_state.seq_num}. Retransmitting chunk {transfer_state.current_chunk}.")
         send_data(sock, transfer_state)
         return
     
-    # check if its the ast chunk
+    # check if its the last chunk
     if transfer_state.current_chunk == transfer_state.total_chunks - 1 :
-        print(f"[SERVER]    Received ACK for last chunk of the file of connection_id={transfer_state.connection_id}" +
+        print(f"[SERVER][Transfer #{transfer_state.transfer_number}]    Received ACK for last chunk of the file of connection_id={transfer_state.connection_id}" +
               "This transfer will be removed from the list of active transfers.")
         transfer_state.complete = True
         del active_transfers[connection_id]
         return
     
     transfer_state.next()
-    print(f"[SERVER]    ACK received seq_num={seq_num} ")
+    print(f"[SERVER][Transfer #{transfer_state.transfer_number}]   ACK received seq_num={seq_num} ")
     send_data(sock, transfer_state)
 
 
@@ -100,7 +111,7 @@ def send_data(sock, transfer_state):
         segment_size= transfer_state.segment_size
     )
     sock.sendto(packet, transfer_state.client_addr)
-    print(f"[server]    DATA sent  seq={transfer_state.seq_num}. Sent {transfer_state.current_chunk}/{transfer_state.total_chunks}")
+    print(f"[SERVER]    DATA sent  seq={transfer_state.seq_num}. Sent {transfer_state.current_chunk}/{transfer_state.total_chunks}")
 
 
 
@@ -137,7 +148,7 @@ def start_server(args):
             connection_id = parsed['connection_id']
 
             if msg_type == MSG_REQUEST:
-                print(f"[SERVER]    Received REQUEST type message.")
+                print(f"[SERVER] Received REQUEST type message.")
                 handle_request(
                     sock,
                     client_addr,
@@ -146,10 +157,10 @@ def start_server(args):
                     active_transfers
                 )
             elif msg_type == MSG_ACK:
-                print(f"[SERVER]    Received ACK type message.")
+                print(f"[SERVER]    Received ACK type message. ")
                 handle_ack(sock, parsed, active_transfers)
             else:
-                print(f"[SERVER]    Received {msg_type} type message. Not implemented yet.")
+                print(f"[SERVER]  Received {msg_type} type message. Not implemented yet.")
 
     except KeyboardInterrupt:
         print(f"\n[server] shutting down")
