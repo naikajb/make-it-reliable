@@ -152,8 +152,13 @@ def start_server(args):
                 print(f"[SERVER]    Socket error: {e}")
                 continue
 
-            msg_type = parsed['msg_type']
-            connection_id = parsed['connection_id']
+            try:
+                parsed = unpack_packet(data)
+                msg_type = parsed['msg_type']
+                connection_id = parsed['connection_id']
+            except ValueError as e:
+                print(f"[SERVER]    Dropping a packet because error occured: {e}")
+                continue
 
             if msg_type == MSG_REQUEST:
                 print(f"[SERVER] Received REQUEST type message.")
