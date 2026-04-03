@@ -38,7 +38,10 @@ run_scenario() {
 # scenario 1: delay
 run_scenario "DELAY 150ms + 20ms jitter" "delay 150ms 20ms"
 
-# scenario 2: loss
+# scenario 2: loss 3% (moderate)
+run_scenario "LOSS 3%" "loss 3%"
+
+# scenario 3: loss 10% (high - expected to show limitations)
 run_scenario "LOSS 10%" "loss 10%"
 
 echo "done."
