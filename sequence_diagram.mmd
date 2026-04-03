@@ -1,0 +1,34 @@
+sequenceDiagram
+    participant C as Client
+    participant S as Server
+
+    Note over C: generate connection ID
+    C->>S: REQUEST (filename, connection ID, segment size)
+
+    alt file not found
+        S-->>C: ERROR
+        Note over C: abort transfer
+    else file found
+        Note over S: split file into chunks
+        S->>C: DATA (seq=0, chunk 1)
+        C->>S: ACK (seq=0)
+
+        S->>C: DATA (seq=1, chunk 2)
+        C->>S: ACK (seq=1)
+
+        Note over S,C: ... repeats for each chunk ...
+
+        S->>C: DATA (seq=0, last chunk, payload < segment size)
+        C->>S: ACK (seq=0)
+        Note over C: write file to disk
+    end
+
+    alt ACK lost (server side)
+        Note over S: timeout after 3s
+        S->>C: DATA retransmitted (same chunk)
+    end
+
+    alt DATA lost (client side)
+        Note over C: timeout after 30s
+        Note over C: abort transfer
+    end
