@@ -77,7 +77,7 @@ def receive_file (sock, connection_id, server_addr, output_path, timeout, first_
 
         # IF  connection_id !Valid --> drop packet
         if received_packet['connection_id'] != connection_id:
-            print(f'[CLIENT]     Did not recognize connection_id={received_packet['connect_id']}. Dropping packet.')
+            print(f'[CLIENT]     Did not recognize connection_id={received_packet["connection_id"]}. Dropping packet.')
             continue
 
         # IF  msg_type == MSG_ERROR --> drop packet

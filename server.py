@@ -121,31 +121,44 @@ def start_server(args):
     
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((host, port))
+    sock.settimeout(3.0)
 
     print(f"[SERVER]    Listening on {host}:{port}")
     print(f"[SERVER]    Waiting for requests...\n")
 
     active_transfers = {}
+    MAX_RETRANSMITS = 10
     try: 
         while True:
-            # receive the data
             try:
-                data, client_addr  = sock.recvfrom(65535)
+                data, client_addr = sock.recvfrom(65535)
+            except socket.timeout:
+                # No ACK received within timeout window
+                # Retransmit current chunk for all active transfers
+                for cid, transfer_state in list(active_transfers.items()):
+                    transfer_state.retransmissions += 1
+                    if transfer_state.retransmissions > MAX_RETRANSMITS:
+                        # Give up if we've retried too many times (more than 10 in our case)
+                        print(f"[SERVER]    Transfer #{transfer_state.transfer_number} exceeded max retransmits. Giving up.")
+                        del active_transfers[cid]
+                    else:
+                        # Resend the same chunk we were waiting on
+                        print(f"[SERVER]    Timeout — retransmitting chunk {transfer_state.current_chunk} (attempt {transfer_state.retransmissions})")
+                        send_data(sock, transfer_state)
+                continue
             except KeyboardInterrupt:
                 raise
             except OSError as e:
                 print(f"[SERVER]    Socket error: {e}")
                 continue
 
-            # parse what you received to get the type and connection id
             try:
                 parsed = unpack_packet(data)
+                msg_type = parsed['msg_type']
+                connection_id = parsed['connection_id']
             except ValueError as e:
                 print(f"[SERVER]    Dropping a packet because error occured: {e}")
                 continue
-
-            msg_type = parsed['msg_type']
-            connection_id = parsed['connection_id']
 
             if msg_type == MSG_REQUEST:
                 print(f"[SERVER] Received REQUEST type message.")
