@@ -2,7 +2,7 @@
 
 FILENAME="COMP445_TA4_W26.pdf"
 SEGMENT=512
-TIMEOUT=5.0
+TIMEOUT=30.0
 PROJECT_DIR=$(pwd)
 
 run_scenario() {
