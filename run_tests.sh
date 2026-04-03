@@ -1,6 +1,6 @@
 #!/bin/bash
 
-FILENAME="testfile.pdf"
+FILENAME="COMP445_TA4_W26.pdf"
 SEGMENT=512
 TIMEOUT=5.0
 PROJECT_DIR=$(pwd)
