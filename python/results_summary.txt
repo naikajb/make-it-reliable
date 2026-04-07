@@ -1,0 +1,39 @@
+PART 2 - TEST RESULTS SUMMARY
+========================================
+
+EXPERIMENTAL SETUP
+----------------------------------------
+File            : COMP445_TA4_W26.pdf (2298799 bytes)
+Total chunks    : 4490
+Segment size    : 512 bytes
+Server          : ns_server @ 10.0.0.1:5005
+Client          : ns_client @ 10.0.0.2
+Interface       : veth_server <-> veth_client
+
+SCENARIO: DELAY 150ms + 20ms jitter
+----------------------------------------
+netem command   : tc qdisc add dev veth_server root netem delay 150ms 20ms
+Result          : SUCCESS
+Chunks sent     : 4486
+Chunks received : 4489
+Retransmissions : 0
+File saved      : [CLIENT]    File saved ⇒ ./received_files/Received_COMP445_TA4_W26.pdf  (2298799B)
+
+SCENARIO: LOSS 3%
+----------------------------------------
+netem command   : tc qdisc add dev veth_server root netem loss 3%
+Result          : FAILURE
+Chunks sent     : 495
+Chunks received : 524
+Retransmissions : 9
+Failure reason  : [CLIENT]    Timed out waiting for DATA seq=1
+
+SCENARIO: LOSS 10%
+----------------------------------------
+netem command   : tc qdisc add dev veth_server root netem loss 10%
+Result          : FAILURE
+Chunks sent     : 61
+Chunks received : 85
+Retransmissions : 8
+Failure reason  : [CLIENT]    Timed out waiting for DATA seq=0
+
